@@ -1,0 +1,103 @@
+import { open } from './cdp.mjs';
+const SH = '/workspace/pedidos/shots/'; const B = 'http://127.0.0.1:8796/';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('✓', m); } else { fail++; console.log('✗', m); } };
+const js = s => JSON.stringify(s);
+async function helpers(b) {
+  b.set = (sel, v, ev = 'input') => b.ev(`(()=>{const e=document.querySelector(${js(sel)});e.value=${js(v)};e.dispatchEvent(new Event('${ev}',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));return true})()`);
+  b.click = sel => b.ev(`(()=>{const e=document.querySelector(${js(sel)});if(!e)throw new Error('sem '+${js(sel)});e.click();return true})()`);
+  b.text = sel => b.ev(`(document.querySelector(${js(sel)})||{}).textContent||''`);
+  b.go = async h => { await b.ev(`location.hash=${js(h)}`); await b.sleep(500); };
+}
+// ---------- celular ----------
+const m = await open({ port: 9361, dir: '/tmp/pd-m', width: 390, height: 844, mobile: true }); await helpers(m);
+await m.send('Page.navigate', { url: B }); await m.waitFor(`!!document.querySelector('#lf')`);
+await m.shot(SH + 'm01-login.png');
+await m.set('#lf [name=u]', 'joao'); await m.set('#lf [name=p]', 'senha12345'); await m.click('#lbtn');
+ok(await m.waitFor(`document.body.dataset.view==='pedidos' && !!document.querySelector('#stats .stat')`), 'login com usuário do caixa (operador)');
+await m.shot(SH + 'm02-pedidos-vazio.png');
+await m.go('#/novo'); ok(await m.waitFor(`document.querySelectorAll('#prods .prod').length>5`), 'catálogo do caixa carregado: ' + await m.ev(`document.querySelectorAll('#prods .prod').length`) + ' produtos');
+await m.set('#tel', '38998887766'); ok(await m.waitFor(`document.querySelector('#dialog').open && !!document.querySelector('#cf')`), 'telefone novo abre cadastro');
+await m.set('#cf [name=name]', 'Ana Souza'); await m.set('#cf [name=rua]', 'Rua Goiás'); await m.set('#cf [name=numero]', ''); await m.set('#cf [name=bairro]', '');
+await m.click('#cOk'); await m.sleep(300);
+const errTxt = await m.text('#cErrBox'); ok(/Endereço incompleto: falta número, bairro/.test(errTxt), 'endereço incompleto bloqueado: "' + errTxt + '"');
+ok(await m.ev(`document.querySelector('#dialog').open`), 'cadastro não fechou/salvou');
+await m.shot(SH + 'm03-endereco-incompleto.png');
+await m.set('#cf [name=numero]', '120'); await m.set('#cf [name=bairro]', 'Paracatuzinho'); await m.set('#cf [name=complemento]', 'Casa azul'); await m.set('#cf [name=referencia]', 'Perto da praça');
+// GPS simulado
+await m.send('Browser.grantPermissions', { origin: 'http://127.0.0.1:8796', permissions: ['geolocation'] });
+await m.send('Emulation.setGeolocationOverride', { latitude: -17.2218, longitude: -46.8752, accuracy: 12 });
+await m.click('#gps'); ok(await m.waitFor(`/-17\\.22/.test(document.querySelector('#gpsS').textContent)`), 'GPS opcional capturado');
+await m.click('#cOk'); ok(await m.waitFor(`!document.querySelector('#dialog').open && !!document.querySelector('.cust-card')`), 'cliente salvo e escolhido');
+// itens
+await m.set('#pq', 'tomate'); await m.sleep(200); await m.click('#prods .prod'); await m.click('#items .item [data-d="1"]');
+await m.set('#pq', 'alface'); await m.sleep(200); await m.ev(`document.querySelector('#prods .prod') && document.querySelector('#prods .prod').click()`);
+await m.set('#pq', ''); await m.sleep(200);
+ok(await m.ev(`document.querySelectorAll('#items .item').length`) >= 2, 'itens adicionados');
+await m.click('#pays [data-v=dinheiro]'); await m.click('#segTroco [data-v="1"]');
+await m.set('#trocoP', '5,00'); await m.sleep(150); ok(/menor que o total/.test(await m.text('#trocoR')), 'troco menor que total avisa');
+await m.click('#msave'); await m.sleep(300); ok(/troco/.test(await m.text('#sumErr')), 'salvar bloqueado com troco errado');
+await m.set('#trocoP', '50,00'); await m.sleep(150);
+const trocoV = await m.text('#trocoV'); ok(/R\$/.test(trocoV), 'troco mostrado: ' + trocoV);
+await m.ev(`document.querySelector('#secPag').scrollIntoView()`); await m.shot(SH + 'm04-pagamento-troco.png');
+await m.ev(`document.querySelectorAll('.toast').forEach(t=>t.remove());document.querySelector('#secItens').scrollIntoView()`); await m.shot(SH + 'm05-novo-itens.png');
+await m.set('#obs', 'Banana mais verde, por favor');
+await m.click('#msave'); ok(await m.waitFor(`document.body.dataset.view==='pedido' && !!document.querySelector('#wp')`), 'pedido salvo → detalhe');
+const wa = await m.ev(`document.querySelector('#waC').href`); const txt = decodeURIComponent(wa.split('text=')[1]);
+ok(wa.startsWith('https://wa.me/5538998887766?text='), 'link wa.me do cliente');
+ok(/Ana/.test(txt) && /Tomate/.test(txt) && /\*Total: R\$/.test(txt) && /troco para R\$ 50,00/.test(txt) && /Rua Goiás, 120 — Paracatuzinho/.test(txt) && /Casa azul/.test(txt) && /google\.com\/maps.*-17\.2218/.test(txt), 'mensagem: itens, total, troco, endereço e localização');
+ok(/Frutos da Roça/.test(txt) && /Rua do Santana, 83 — Paracatuzinho, Paracatu\/MG/.test(txt) && /\(38\) 9\.9825-1455/.test(txt), 'mensagem com identidade da loja (nome, endereço, WhatsApp)');
+console.log('---- mensagem ----\n' + txt + '\n------------------');
+const waL = await m.ev(`document.querySelector('#waL').href`); ok(waL.startsWith('https://wa.me/5538998251455?text='), 'botão para o WhatsApp da loja (38) 9.9825-1455');
+await m.shot(SH + 'm06-pedido-detalhe.png');
+await m.ev(`document.querySelector('#waBox').scrollIntoView()`); await m.shot(SH + 'm07-whatsapp.png');
+// status
+await m.ev(`window.scrollTo(0,0)`);
+await m.click('#acts [data-st=confirmado]'); ok(await m.waitFor(`document.querySelector('.step.cur') && document.querySelector('.step.cur').textContent==='Confirmado'`), 'status → Confirmado');
+await m.click('#acts [data-st=separando]'); ok(await m.waitFor(`document.querySelector('.step.cur') && document.querySelector('.step.cur').textContent==='Separando'`), 'status → Separando');
+await m.click('#acts [data-st=saiu_entrega]'); ok(await m.waitFor(`document.querySelector('.step.cur') && document.querySelector('.step.cur').textContent==='Saiu para entrega'`), 'status → Saiu para entrega');
+ok(/saiu para entrega/.test(await m.text('#wp')), 'mensagem muda para "saiu para entrega"');
+await m.click('#aSale'); ok(await m.waitFor(`!!document.querySelector('#term')`), 'diálogo de venda lista caixa aberto');
+await m.shot(SH + 'm08-registrar-venda.png');
+await m.click('#sOk'); ok(await m.waitFor(`/Venda nº/.test(document.querySelector('.sec-head').textContent)`), 'entregue + venda registrada no caixa');
+await m.shot(SH + 'm09-entregue-venda.png');
+// encomenda
+await m.go('#/agenda'); await m.waitFor(`!!document.querySelector('#agNew')`); await m.click('#agNew'); await m.sleep(600);
+await m.waitFor(`document.querySelectorAll('#prods .prod').length>5`);
+ok(await m.ev(`document.querySelector('#segTipo [data-v=encomenda]').getAttribute('aria-pressed')`) === 'true', 'nova encomenda já vem como encomenda');
+await m.set('#tel', '38998887766'); ok(await m.waitFor(`!!document.querySelector('.cust-card')`), 'cliente existente achado pelo telefone');
+await m.click('#prods .prod'); await m.click('#segModo [data-v=retirada]'); await m.click('#pays [data-v=pix]');
+ok(/Rua do Santana, 83/.test(await m.text('#ent')), 'retirada mostra endereço da loja');
+await m.click('#msave'); await m.sleep(300); ok(/data e a hora/.test(await m.text('#sumErr')), 'encomenda sem data bloqueada');
+const d = new Date(Date.now() + 2 * 86400e3); d.setHours(9, 30, 0, 0); const p2 = n => String(n).padStart(2, '0');
+await m.set('#ag', `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T09:30`);
+await m.ev(`window.scrollTo(0,0)`); await m.shot(SH + 'm10-encomenda.png');
+await m.click('#msave'); ok(await m.waitFor(`document.body.dataset.view==='pedido'`), 'encomenda salva');
+const t2 = await m.text('#wp'); ok(/encomenda nº/.test(t2) && /Retirada combinada/.test(t2) && /Retirada na loja:\* Rua do Santana, 83/.test(t2), 'mensagem da encomenda com data e endereço da loja');
+await m.go('#/agenda'); await m.waitFor(`document.querySelectorAll('.ocard').length>0`); await m.shot(SH + 'm11-agenda.png');
+await m.go('#/pedidos'); await m.waitFor(`document.querySelectorAll('.ocard').length>0`); await m.click('#chips [data-f=todos]'); await m.sleep(200); await m.shot(SH + 'm12-pedidos-lista.png');
+await m.set('#q', '9888'); await m.sleep(200); ok(await m.ev(`document.querySelectorAll('.ocard').length`) === 2, 'busca por telefone');
+await m.go('#/clientes'); await m.waitFor(`!!document.querySelector('#cl tr[data-id]')`); await m.shot(SH + 'm13-clientes.png');
+await m.go('#/loja'); await m.waitFor(`!!document.querySelector('#tplLink')`); await m.shot(SH + 'm14-loja.png');
+ok(/wa\.me\/5538998251455/.test(await m.ev(`document.querySelector('#tplLink').href`)), 'link pronto para cliente pedir pelo WhatsApp da loja');
+ok(m.errors.length === 0, 'sem erros de JS no celular ' + JSON.stringify(m.errors).slice(0, 300));
+m.close();
+// ---------- computador ----------
+const dk = await open({ port: 9362, dir: '/tmp/pd-d', width: 1366, height: 900, mobile: false }); await helpers(dk);
+await dk.send('Page.navigate', { url: B }); await dk.waitFor(`!!document.querySelector('#lf')`);
+await dk.set('#lf [name=u]', 'rafael'); await dk.set('#lf [name=p]', 'senha12345'); await dk.click('#lbtn');
+await dk.waitFor(`document.querySelectorAll('.ocard').length>0`); await dk.click('#chips [data-f=todos]'); await dk.sleep(300);
+ok(await dk.ev(`getComputedStyle(document.querySelector('#side')).display!=='none' && getComputedStyle(document.querySelector('#bnav')).display==='none'`), 'desktop: menu lateral, sem barra de baixo');
+await dk.shot(SH + 'd01-pedidos.png');
+await dk.go('#/novo'); await dk.waitFor(`document.querySelectorAll('#prods .prod').length>5`); await dk.click('#prods .prod'); await dk.ev(`document.querySelectorAll('#prods .prod')[3].click()`); await dk.sleep(300); await dk.shot(SH + 'd02-novo-pedido.png');
+const id1 = await dk.ev(`(window.PD.S.orders.find(o=>o.tipo==='pedido')||{}).id`);
+await dk.go('#/pedido/' + id1); await dk.waitFor(`!!document.querySelector('#wp')`); await dk.shot(SH + 'd03-pedido-detalhe.png');
+await dk.go('#/agenda'); await dk.waitFor(`document.querySelectorAll('.ocard').length>0`); await dk.shot(SH + 'd04-agenda.png');
+await dk.go('#/clientes'); await dk.waitFor(`!!document.querySelector('#cl tr[data-id]')`); await dk.shot(SH + 'd05-clientes.png');
+await dk.go('#/loja'); await dk.waitFor(`!!document.querySelector('#tplLink')`); await dk.shot(SH + 'd06-loja.png');
+// admin cancela a encomenda
+const id2 = await dk.ev(`(window.PD.S.orders.find(o=>o.tipo==='encomenda'&&o.status!=='cancelado')||{}).id`);
+await dk.go('#/pedido/' + id2); await dk.waitFor(`!!document.querySelector('#aCancel')`); await dk.click('#aCancel'); await dk.set('#cm', 'Cliente remarcou');
+await dk.click('#cOk'); ok(await dk.waitFor(`/Cancelado: Cliente remarcou/.test(document.querySelector('#main').textContent)`), 'admin cancela com motivo');
+ok(dk.errors.length === 0, 'sem erros de JS no desktop ' + JSON.stringify(dk.errors).slice(0, 300));
+dk.close();
+console.log(`\n${pass} ok, ${fail} falhas`); process.exit(fail ? 1 : 0);
