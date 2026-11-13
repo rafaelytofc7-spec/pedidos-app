@@ -32,3 +32,7 @@ Ou cole o arquivo no **SQL Editor** do painel do Supabase e clique em *Run*.
 `tests/` traz os testes de API (26) e de tela (34, Chrome headless no celular 390 px e no PC 1366 px). Eles rodam contra um Supabase **local** (Postgres + GoTrue + PostgREST) com o esquema do Folha Caixa. As capturas ficam em `shots/` (dados de exemplo).
 
 Fotos dos produtos: as mesmas do Folha Caixa, de bancos livres, com os créditos em `CREDITOS-IMAGENS.md`.
+
+## Ativar o banco pelo celular
+Abra **https://rafaelytofc7-spec.github.io/pedidos-app/setup.html**: copie o código, abra o SQL Editor do
+Supabase, cole e rode, e use **Testar conexão** para confirmar (“Banco pronto”).

@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1e4d2b">
+<meta name="robots" content="noindex">
+<title>Ativar o banco · Pedidos Frutos da Roça</title>
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+:root{--bg:#0c1810;--panel:#14271b;--panel-2:#1a3123;--line:#2f4d3a;--text:#f4f2ea;--muted:#b5c2b6;--brand:#1e4d2b;--leaf:#6cae3a;--leaf-2:#8fcb5a;
+  --accent:#f0b428;--accent-ink:#1d1504;--red:#ef6650;--green:#7fd67b;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(700px 420px at 100% -10%,rgba(240,180,40,.08),transparent 60%),var(--bg);color:var(--text);
+  font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",Arial,sans-serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+header{display:flex;align-items:center;gap:12px;padding:calc(14px + env(safe-area-inset-top,0px)) 18px 14px;background:linear-gradient(90deg,#1e4d2b,#12281a);border-bottom:1px solid var(--line)}
+header img{width:44px;height:44px;border-radius:12px}
+header strong{display:block;font-size:18px;line-height:1.2} header small{color:var(--accent);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:11px}
+main{max-width:640px;margin:0 auto;padding:18px 16px calc(40px + env(safe-area-inset-bottom,0px))}
+h1{font-size:24px;line-height:1.2;margin:4px 0 6px} .lead{color:var(--muted);margin:0 0 16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;margin:0 0 14px}
+.step{display:flex;gap:12px;align-items:flex-start}
+.n{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);font-weight:800}
+.step h2{font-size:17px;margin:3px 0 4px} .step p{margin:0 0 10px;color:var(--muted)} .step b{color:var(--text)}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:58px;padding:14px 16px;border-radius:14px;border:0;
+  font-family:inherit;font-weight:800;font-size:18px;line-height:1.2;cursor:pointer;text-decoration:none;transition:transform .08s}
+.btn:active{transform:scale(.98)}
+.btn-copy{background:var(--accent);color:var(--accent-ink)} .btn-copy.ok{background:var(--green);color:#082010}
+.btn-open{background:var(--leaf);color:#0b1a0d} .btn-test{background:var(--panel-2);color:var(--text);border:2px solid var(--leaf)}
+.btn[disabled]{opacity:.6}
+.msg{margin:10px 0 0;font-size:14px;color:var(--muted);min-height:1.2em}
+details{margin-top:12px;border:1px solid var(--line);border-radius:12px;background:#0a140d}
+summary{cursor:pointer;padding:12px 14px;font-weight:700;color:var(--leaf-2)}
+textarea{display:block;width:100%;height:320px;margin:0;padding:12px;border:0;border-top:1px solid var(--line);border-radius:0 0 12px 12px;resize:vertical;
+  background:transparent;color:#d9e6d6;font:12px/1.45 ui-monospace,"Cascadia Mono",Consolas,monospace;white-space:pre}
+.status{display:none;margin-top:12px;padding:14px;border-radius:14px;font-weight:800;font-size:18px;text-align:center}
+.status small{display:block;font-weight:500;font-size:13px;margin-top:4px;color:inherit;opacity:.9}
+.status.ok{display:block;background:rgba(127,214,123,.15);border:2px solid var(--green);color:var(--green)}
+.status.no{display:block;background:rgba(239,102,80,.14);border:2px solid var(--red);color:#ff9b8a}
+.status.wait{display:block;background:var(--panel-2);border:2px solid var(--line);color:var(--muted)}
+ul.checks{margin:10px 0 0;padding:0;list-style:none;font-size:14px;color:var(--muted)} ul.checks li{margin:2px 0}
+.foot{color:var(--muted);font-size:13px;text-align:center;margin-top:18px} .foot a{color:var(--leaf-2)}
+</style>
+</head>
+<body>
+<header>
+  <img src="icons/logo-frutos-da-roca.png" alt="">
+  <div><strong>Hortifruti Frutos da Roça</strong><small>Pedidos · ativar o banco</small></div>
+</header>
+<main>
+  <h1>Ativar os pedidos no banco</h1>
+  <p class="lead">Faça uma vez só, pelo celular mesmo. Leva uns 2 minutos e não mexe nas vendas, produtos nem no caixa: só acrescenta as tabelas de pedidos.</p>
+
+  <section class="card step">
+    <span class="n">1</span>
+    <div style="flex:1;min-width:0">
+      <h2>Copie o código do banco</h2>
+      <p>Toque no botão amarelo. Vai aparecer <b>“Copiado!”</b>.</p>
+      <button class="btn btn-copy" id="copiar" type="button" disabled>Carregando código…</button>
+      <p class="msg" id="copiarMsg"></p>
+      <details id="ver">
+        <summary>Ver o código (<span id="linhas">…</span> linhas)</summary>
+        <textarea id="sql" readonly spellcheck="false" aria-label="Código SQL do banco"></textarea>
+      </details>
+    </div>
+  </section>
+
+  <section class="card step">
+    <span class="n">2</span>
+    <div style="flex:1;min-width:0">
+      <h2>Abra o editor do Supabase</h2>
+      <p>Entre com a <b>conta do Folha Caixa</b> se pedir. Abre o <b>SQL Editor</b> do projeto do caixa.</p>
+      <a class="btn btn-open" id="abrir" href="https://supabase.com/dashboard/project/cprtigvovwbmigxbosac/sql/new" target="_blank" rel="noopener">Abrir o Supabase ↗</a>
+    </div>
+  </section>
+
+  <section class="card step">
+    <span class="n">3</span>
+    <div style="flex:1;min-width:0">
+      <h2>Cole e rode</h2>
+      <p>Toque no espaço em branco do editor, segure e escolha <b>Colar</b>. Depois toque no botão verde <b>Run</b>. Deve aparecer <b>“Success. No rows returned”</b>.</p>
+      <p>Se aparecer um aviso perguntando se quer mesmo rodar, toque em <b>Run this query</b>.</p>
+    </div>
+  </section>
+
+  <section class="card step">
+    <span class="n">4</span>
+    <div style="flex:1;min-width:0">
+      <h2>Volte aqui e teste</h2>
+      <p>Confere se o banco já tem os pedidos.</p>
+      <button class="btn btn-test" id="testar" type="button">Testar conexão</button>
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+      <ul class="checks" id="checks"></ul>
+    </div>
+  </section>
+
+  <p class="foot">Pronto? <a href="./">Abrir o app de pedidos</a> · Loja: Rua do Santana, 83 — Paracatuzinho, Paracatu/MG</p>
+</main>
+<script src="assets/config.js"></script>
+<script>
+'use strict';
+(function () {
+  var SQL_URL = 'supabase/2026-11-12_pedidos_v1.sql';
+  var sql = '';
+  var btn = document.getElementById('copiar'), msg = document.getElementById('copiarMsg'), ta = document.getElementById('sql');
+
+  fetch(SQL_URL + '?v=' + Date.now(), { cache: 'no-store' }).then(function (r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status); return r.text();
+  }).then(function (t) {
+    if (t.indexOf('pd_pedidos') < 0) throw new Error('arquivo inesperado');
+    sql = t; ta.value = t; document.getElementById('linhas').textContent = t.split('\n').length;
+    btn.disabled = false; btn.textContent = 'Copiar código do banco';
+  }).catch(function (e) {
+    btn.textContent = 'Não carregou — toque para tentar de novo'; btn.disabled = false; btn.dataset.erro = '1';
+    msg.textContent = 'Sem internet? (' + e.message + ')';
+  });
+
+  function copiaFallback() {
+    var d = document.getElementById('ver'); var aberto = d.open; d.open = true;
+    ta.removeAttribute('readonly'); ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length);
+    var ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    ta.setAttribute('readonly', ''); ta.blur(); if (ok) d.open = aberto;
+    return ok;
+  }
+  function feito(ok) {
+    if (ok) {
+      btn.classList.add('ok'); btn.textContent = 'Copiado! ✓';
+      msg.textContent = 'Código copiado (' + sql.length.toLocaleString('pt-BR') + ' caracteres). Agora o passo 2.';
+      setTimeout(function () { btn.classList.remove('ok'); btn.textContent = 'Copiar código do banco'; }, 4000);
+    } else {
+      var d = document.getElementById('ver'); d.open = true; ta.focus(); ta.select();
+      msg.textContent = 'Não consegui copiar sozinho. O código está selecionado abaixo: segure em cima dele e toque em Copiar.';
+    }
+  }
+  btn.addEventListener('click', function () {
+    if (btn.dataset.erro) { location.reload(); return; }
+    if (!sql) return;
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(sql).then(function () { feito(true); }, function () { feito(copiaFallback()); });
+    } else feito(copiaFallback());
+  });
+
+  // Teste: com a chave pública (sem login) o banco deve RECUSAR o acesso aos pedidos.
+  // "permissão negada" = existe; "não encontrado" = ainda não foi ativado.
+  var C = window.PD_CONFIG || {};
+  function hdrs() { var h = { apikey: C.key, 'Content-Type': 'application/json' }; if (/^eyJ/.test(C.key || '')) h.Authorization = 'Bearer ' + C.key; return h; }
+  function avalia(r, txt) {
+    var j = {}; try { j = JSON.parse(txt); } catch (e) { }
+    var code = j.code || '', m = (j.message || txt || '').toLowerCase();
+    if (code === '42501' || /permission denied/.test(m)) return 'existe';
+    if (r.ok) return 'existe';
+    if (code === 'PGRST205' || code === 'PGRST202' || code === '42P01' || code === '42883' || /does not exist|could not find/.test(m)) return 'falta';
+    return 'erro: ' + r.status + ' ' + (j.message || txt).slice(0, 120);
+  }
+  function checa(nome, path, opts) {
+    return fetch(C.url + path, opts).then(function (r) { return r.text().then(function (t) { return { nome: nome, res: avalia(r, t) }; }); },
+      function (e) { return { nome: nome, res: 'erro: sem conexão' }; });
+  }
+  document.getElementById('testar').addEventListener('click', function () {
+    var st = document.getElementById('status'), ul = document.getElementById('checks'), b = this;
+    st.className = 'status wait'; st.textContent = 'Testando…'; ul.innerHTML = ''; b.disabled = true;
+    Promise.all([
+      checa('Tabela de pedidos', '/rest/v1/pd_pedidos?select=id&limit=1', { headers: hdrs() }),
+      checa('Tabela de clientes', '/rest/v1/pd_clientes?select=id&limit=1', { headers: hdrs() }),
+      checa('Função salvar pedido', '/rest/v1/rpc/pd_pedido_salvar', { method: 'POST', headers: hdrs(), body: JSON.stringify({ p_token: 'teste', p_id: null, p_data: {} }) }),
+      checa('Função registrar venda', '/rest/v1/rpc/pd_pedido_registrar_venda', { method: 'POST', headers: hdrs(), body: JSON.stringify({ p_token: 'teste', p_terminal: 'teste', p_id: 0 }) })
+    ]).then(function (rs) {
+      b.disabled = false;
+      rs.forEach(function (x) { var li = document.createElement('li'); li.textContent = (x.res === 'existe' ? '✅ ' : x.res === 'falta' ? '❌ ' : '⚠️ ') + x.nome + (x.res === 'existe' ? '' : x.res === 'falta' ? ' — não encontrada' : ' — ' + x.res.slice(6)); ul.appendChild(li); });
+      var ok = rs.every(function (x) { return x.res === 'existe'; }), falta = rs.some(function (x) { return x.res === 'falta'; });
+      document.body.dataset.teste = ok ? 'pronto' : falta ? 'falta' : 'erro';
+      if (ok) { st.className = 'status ok'; st.innerHTML = 'Banco pronto ✓<small>Os pedidos já podem ser salvos. Pode abrir o app.</small>'; }
+      else if (falta) { st.className = 'status no'; st.innerHTML = 'Ainda não ativado<small>Faça os passos 1 a 3 e teste de novo.</small>'; }
+      else { st.className = 'status no'; st.innerHTML = 'Não consegui testar<small>Confira a internet e tente de novo.</small>'; }
+    });
+  });
+})();
+</script>
+</body>
+</html>
